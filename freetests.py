@@ -182,6 +182,7 @@ class TestHTTPClient(unittest.TestCase):
         http = httpclass.HTTPClient()
         path = "post_echoer"
         url = "http://%s:%d/%s" % (BASEHOST,BASEPORT, path)
+        # print "THIS IS THE URL: %s" % (url)
         args = {'a':'aaaaaaaaaaaaa',
                 'b':'bbbbbbbbbbbbbbbbbbbbbb',
                 'c':'c',

@@ -69,13 +69,13 @@ class HTTPClient(object):
         return str(buffer)
 
     def GET(self, url, args=None):
-        parsed=urlparse.urlparse(url)
+        parsed=self.parseURL(url)
         if type(args) is dict:
             #TODO: Process args dictionary
-            clientSocket=self.connect(parsed.hostname, parsed.port)
+            clientSocket=self.connect(parsed["host"], parsed["port"])
         elif args is None:
-            clientSocket=self.connect(parsed.hostname, parsed.port)
-            GET_request=self.gen_GET_text(parsed.hostname, parsed.path)
+            clientSocket=self.connect(parsed["host"], parsed["port"])
+            GET_request=self.gen_GET_text(parsed["host"], parsed["path"])
 
         clientSocket.sendall(GET_request)
         response_text=self.recvall(clientSocket)
@@ -84,13 +84,13 @@ class HTTPClient(object):
         return response_obj
 
     def POST(self, url, args=None):
-        parsed=urlparse.urlparse(url)
+        parsed=self.parseURL(url)
         if type(args) is dict:
-            clientSocket=self.connect(parsed.hostname, parsed.port)
-            POST_request=self.gen_POST_text(parsed.hostname, parsed.path, args)
+            clientSocket=self.connect(parsed["host"], parsed["port"])
+            POST_request=self.gen_POST_text(parsed["host"], parsed["path"], args)
         elif args is None:
-            clientSocket=self.connect(parsed.hostname, parsed.port)
-            POST_request=self.gen_POST_text(parsed.hostname, parsed.path)
+            clientSocket=self.connect(parsed["host"], parsed["port"])
+            POST_request=self.gen_POST_text(parsed["host"], parsed["path"], args)
 
         clientSocket.sendall(POST_request)
         response_text=self.recvall(clientSocket)
@@ -118,7 +118,7 @@ class HTTPClient(object):
 
         text="POST %s HTTP/1.1\r\n" % (path)
         text+="Host: %s\r\n" % (host)
-        text+="Connection: close\r\n"
+        # text+="Connection: close\r\n"
         text+="User-Agent: httpclient/1.0\r\n"
         text+="Accept-Encoding: gzip\r\n"
         text+="Accept-Charset: ISO-8859-1,UTF-8;q=0.7,*;q=0.7\r\n"
@@ -126,7 +126,7 @@ class HTTPClient(object):
         text+="Accept-Language: de,en;q=0.7,en-us;q=0.3\r\n"
         
         text+="Content-Type: application/x-www-form-urlencoded\r\n"
-        text+="Content-Length: %d\r\n" % (content_length)
+        text+="Content-Length: %d\r\n\r\n" % (content_length)
         text+="%s\r\n" % (content)
         text+="\r\n"
 
@@ -148,7 +148,8 @@ class HTTPClient(object):
         text+="Host: %s\r\n" % (host)
         text+="Connection: close\r\n"
         text+="User-Agent: httpclient/1.0\r\n"
-        text+="Accept-Encoding: gzip\r\n"
+        # text+="Accept-Encoding: gzip\r\n"
+        text+="Accept-Encoding: identity\r\n"
         text+="Accept-Charset: ISO-8859-1,UTF-8;q=0.7,*;q=0.7\r\n"
         text+="Cache-Control: no-cache\r\n"
         text+="Accept-Language: de,en;q=0.7,en-us;q=0.3\r\n"
@@ -160,14 +161,71 @@ class HTTPClient(object):
 
         status_code=self.get_code(response)
         index=response.find('\r\n\r\n')
+        # print response
         if index != -1:
             body=response[index+4:]
             header=response[:index+2]
+            header, body=self.processBody(header, body)
         else:
             body=""
             header=""
 
         return HTTPResponse(status_code, body, header)    
+
+    def parseURL(self, URL):
+        
+        parsed={}
+        if "http" not in URL:
+            splitted=URL.split("/")
+            if ":" not in splitted[0]:
+                parsed["host"]=splitted[0]
+                parsed["port"]=80
+            else:
+                parsed["host"]=splitted[0].split(":")[0]
+                parsed["port"]=int(splitted[0].split(":")[1])
+            parsed["path"]="/"+"/".join(splitted[1:])
+
+        else:
+
+            if "https" in URL:
+                splitted=URL.split("/")
+                del splitted[1]
+                if ":" not in splitted[1]:
+                    parsed["host"]=splitted[1]
+                    parsed["port"]=443
+                else:
+                    parsed["host"]=splitted[1].split(":")[0]
+                    parsed["port"]=int(splitted[1].split(":")[1])
+
+            else: #in case http is there
+                splitted=URL.split("/")
+                del splitted[1]
+                if ":" not in splitted[1]:
+                    parsed["host"]=splitted[1]
+                    parsed["port"]=80
+                else:
+                    parsed["host"]=splitted[1].split(":")[0]
+                    parsed["port"]=int(splitted[1].split(":")[1])
+            parsed["path"]="/"+"/".join(splitted[2:])
+
+        # if URL[-1]!="/":
+        #     parsed["path"]=parsed["path"][:-1]
+
+        print parsed
+
+        return parsed
+
+    def processBody(self, header, body):
+
+        # print header
+
+        for line in header.split("\r\n"):
+            if "charset=" in line and "text/html" in line:
+                encoding=line.split("charset=")[1]
+                body=unicode(body, encoding)
+                break
+        
+        return [header, body]
 
 
 if __name__ == "__main__":

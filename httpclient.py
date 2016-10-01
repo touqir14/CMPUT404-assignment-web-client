@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
-# Copyright 2016 Abram Hindle, https://github.com/tywtyw2002, and https://github.com/treedust
+# Copyright 2016 Touqir Sajed, Abram Hindle, https://github.com/tywtyw2002, and https://github.com/treedust
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,7 +23,6 @@ import socket
 import re
 # you may use urllib to encode data appropriately
 import urllib
-import urlparse
 
 def help():
     print "httpclient.py [GET/POST] [URL]\n"
@@ -35,7 +34,7 @@ class HTTPResponse(object):
         self.header = header
 
     def std_out(self):
-        print "status code: %s\nHeaders: \n\n%s\nBody: \n\n%s" % (self.code, self.header, self.body)
+        print "status code: %s\nHTTP Header: \n\n%s\nBody: \n\n%s" % (self.code, self.header, self.body)
 
 
 class HTTPClient(object):
@@ -50,22 +49,17 @@ class HTTPClient(object):
         status_code=int(data.split(" ")[1])
         return status_code
 
-    # def get_headers(self,data):
-    #     return None
-
-    # def get_body(self, data):
-    #     return None
-
-    # read everything from the socket
     def recvall(self, sock):
+        multiplier=4
         buffer = bytearray()
         done = False
         while not done:
-            part = sock.recv(1024)
+            part = sock.recv(multiplier*1024)
             if (part):
                 buffer.extend(part)
             else:
                 done = not part
+
         return str(buffer)
 
     def GET(self, url, args=None):
@@ -118,9 +112,9 @@ class HTTPClient(object):
 
         text="POST %s HTTP/1.1\r\n" % (path)
         text+="Host: %s\r\n" % (host)
-        # text+="Connection: close\r\n"
+        text+="Connection: close\r\n"
         text+="User-Agent: httpclient/1.0\r\n"
-        text+="Accept-Encoding: gzip\r\n"
+        text+="Accept-Encoding: identity\r\n"
         text+="Accept-Charset: ISO-8859-1,UTF-8;q=0.7,*;q=0.7\r\n"
         text+="Cache-Control: no-cache\r\n"
         text+="Accept-Language: de,en;q=0.7,en-us;q=0.3\r\n"
@@ -161,7 +155,6 @@ class HTTPClient(object):
 
         status_code=self.get_code(response)
         index=response.find('\r\n\r\n')
-        # print response
         if index != -1:
             body=response[index+4:]
             header=response[:index+2]
@@ -183,41 +176,32 @@ class HTTPClient(object):
             else:
                 parsed["host"]=splitted[0].split(":")[0]
                 parsed["port"]=int(splitted[0].split(":")[1])
-            parsed["path"]="/"+"/".join(splitted[1:])
 
-        else:
+            if len(splitted)>1:
+                parsed["path"]="/"+"/".join(splitted[1:])
+            else:
+                parsed["path"]=""
 
-            if "https" in URL:
-                splitted=URL.split("/")
-                del splitted[1]
-                if ":" not in splitted[1]:
-                    parsed["host"]=splitted[1]
-                    parsed["port"]=443
-                else:
-                    parsed["host"]=splitted[1].split(":")[0]
-                    parsed["port"]=int(splitted[1].split(":")[1])
+        else:           
 
-            else: #in case http is there
-                splitted=URL.split("/")
-                del splitted[1]
-                if ":" not in splitted[1]:
-                    parsed["host"]=splitted[1]
-                    parsed["port"]=80
-                else:
-                    parsed["host"]=splitted[1].split(":")[0]
-                    parsed["port"]=int(splitted[1].split(":")[1])
-            parsed["path"]="/"+"/".join(splitted[2:])
+            splitted=URL.split("/")
+            del splitted[1]
+            if ":" not in splitted[1]:
+                parsed["host"]=splitted[1]
+                parsed["port"]=80
+            else:
+                parsed["host"]=splitted[1].split(":")[0]
+                parsed["port"]=int(splitted[1].split(":")[1])
+            
+            if len(splitted)>2:
+                parsed["path"]="/"+"/".join(splitted[2:])
+            else:
+                parsed["path"]=""
 
-        # if URL[-1]!="/":
-        #     parsed["path"]=parsed["path"][:-1]
-
-        print parsed
 
         return parsed
 
     def processBody(self, header, body):
-
-        # print header
 
         for line in header.split("\r\n"):
             if "charset=" in line and "text/html" in line:

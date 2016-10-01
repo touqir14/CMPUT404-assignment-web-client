@@ -29,8 +29,8 @@ import urlparse
 import json
 
 BASEHOST = '127.0.0.1'
-# BASEPORT = 27600 + random.randint(1,100)
-BASEPORT=27600
+BASEPORT = 27600 + random.randint(1,100)
+
 
 httpclass = httpclient
 #import mysolution
@@ -158,7 +158,8 @@ class TestHTTPClient(unittest.TestCase):
             "http://www.cs.ualberta.ca/",
             "http://softwareprocess.es/static/SoftwareProcess.es.html",
             "http://c2.com/cgi/wiki?CommonLispHyperSpec",
-            "http://slashdot.org"
+            "http://slashdot.org",
+            "www.google.com"
             ]
         for url in urls:
             try:
@@ -182,7 +183,6 @@ class TestHTTPClient(unittest.TestCase):
         http = httpclass.HTTPClient()
         path = "post_echoer"
         url = "http://%s:%d/%s" % (BASEHOST,BASEPORT, path)
-        print "THIS IS THE URL: %s" % (url)
         args = {'a':'aaaaaaaaaaaaa',
                 'b':'bbbbbbbbbbbbbbbbbbbbbb',
                 'c':'c',
